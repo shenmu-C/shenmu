@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>神沐 · C++ 开发工具箱</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0d1117;
+      --bg-card: #161b22;
+      --border: #30363d;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --accent: #58a6ff;
+      --accent-glow: rgba(88,166,255,0.3);
+      --green: #3fb950;
+      --orange: #f0883e;
+      --purple: #a371f7;
+      --red: #f85149;
+      --cyan: #39c5cf;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'JetBrains Mono', 'Noto Serif SC', monospace;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ===== 开场动画 ===== */
+    #intro-screen {
+      position: fixed; inset: 0;
+      background: var(--bg-dark);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 1000;
+      transition: opacity 1.2s ease, visibility 1.2s ease;
+    }
+
+    #intro-screen.hidden {
+      opacity: 0; visibility: hidden; pointer-events: none;
+    }
+
+    .shenmu-text {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 120px;
+      font-weight: 900;
+      color: var(--text-primary);
+      letter-spacing: 40px;
+      text-indent: 40px;
+      position: relative;
+    }
+
+    .shenmu-text .char {
+      display: inline-block;
+      opacity: 0;
+      transform: translateY(30px) scale(0.8);
+      animation: charReveal 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      text-shadow: 0 0 60px var(--accent-glow);
+    }
+
+    @keyframes charReveal {
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .shenmu-text .char:nth-child(1) { animation-delay: 0.3s; }
+    .shenmu-text .char:nth-child(2) { animation-delay: 0.9s; }
+
+    .cursor-blink {
+      display: inline-block;
+      width: 4px; height: 100px;
+      background: var(--accent);
+      margin-left: 10px;
+      vertical-align: middle;
+      animation: blink 0.8s step-end infinite;
+      opacity: 0;
+      animation-delay: 1.6s;
+      animation-fill-mode: forwards;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .typing-line {
+      margin-top: 30px;
+      font-size: 14px;
+      color: var(--text-secondary);
+      opacity: 0;
+      animation: fadeIn 0.6s ease forwards;
+      animation-delay: 2.2s;
+    }
+
+    @keyframes fadeIn { to { opacity: 1; } }
+
+    .enter-hint {
+      margin-top: 60px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      opacity: 0;
+      animation: fadeIn 0.6s ease forwards;
+      animation-delay: 3s;
+      cursor: pointer;
+      padding: 12px 32px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: all 0.3s ease;
+    }
+
+    .enter-hint:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    /* 背景粒子 */
+    .particles {
+      position: absolute; inset: 0;
+      overflow: hidden; pointer-events: none;
+    }
+
+    .particle {
+      position: absolute;
+      width: 2px; height: 2px;
+      background: var(--accent);
+      border-radius: 50%;
+      opacity: 0.3;
+      animation: float 8s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) translateX(0); opacity: 0.1; }
+      50% { transform: translateY(-100px) translateX(30px); opacity: 0.5; }
+    }
+
+    /* ===== 主导航页 ===== */
+    #main-nav {
+      min-height: 100vh;
+      padding: 60px 40px;
+      opacity: 0;
+      transform: translateY(40px);
+      transition: all 1s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    #main-nav.visible {
+      opacity: 1; transform: translateY(0);
+    }
+
+    .nav-header {
+      text-align: center;
+      margin-bottom: 60px;
+    }
+
+    .nav-header h1 {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 42px;
+      font-weight: 900;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, var(--accent), var(--cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .nav-header p {
+      color: var(--text-secondary);
+      font-size: 15px;
+    }
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .tool-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      cursor: pointer;
+      transition: all 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+      position: relative;
+      overflow: hidden;
+      text-decoration: none;
+      display: block;
+    }
+
+    .tool-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--cyan));
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.4s ease;
+    }
+
+    .tool-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-6px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 30px var(--accent-glow);
+    }
+
+    .tool-card:hover::before {
+      transform: scaleX(1);
+    }
+
+    .tool-icon {
+      width: 48px; height: 48px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .tool-card h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+      color: var(--text-primary);
+    }
+
+    .tool-card .desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .tool-links {
+      display: flex; gap: 10px; flex-wrap: wrap;
+    }
+
+    .tool-link {
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 4px;
+      background: rgba(88,166,255,0.1);
+      color: var(--accent);
+      text-decoration: none;
+      border: 1px solid rgba(88,166,255,0.2);
+      transition: all 0.2s ease;
+    }
+
+    .tool-link:hover {
+      background: rgba(88,166,255,0.2);
+      border-color: var(--accent);
+    }
+
+    .tool-link.docs {
+      background: rgba(63,185,80,0.1);
+      color: var(--green);
+      border-color: rgba(63,185,80,0.2);
+    }
+
+    .tool-link.docs:hover {
+      background: rgba(63,185,80,0.2);
+      border-color: var(--green);
+    }
+
+    .tag {
+      position: absolute;
+      top: 20px; right: 20px;
+      font-size: 11px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tag.ide { background: rgba(88,166,255,0.15); color: var(--accent); }
+    .tag.compiler { background: rgba(240,136,62,0.15); color: var(--orange); }
+    .tag.build { background: rgba(163,113,247,0.15); color: var(--purple); }
+    .tag.debug { background: rgba(57,197,207,0.15); color: var(--cyan); }
+    .tag.lib { background: rgba(63,185,80,0.15); color: var(--green); }
+    .tag.std { background: rgba(248,81,73,0.15); color: var(--red); }
+
+    .footer {
+      text-align: center;
+      margin-top: 80px;
+      padding: 40px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer a { color: var(--accent); text-decoration: none; }
+
+    /* 响应式 */
+    @media (max-width: 768px) {
+      .shenmu-text { font-size: 70px; letter-spacing: 20px; text-indent: 20px; }
+      .tools-grid { grid-template-columns: 1fr; padding: 0 10px; }
+      #main-nav { padding: 40px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 开场屏幕 -->
+<div id="intro-screen">
+  <div class="particles" id="particles"></div>
+  <div class="shenmu-text">
+    <span class="char">神</span><span class="char">沐</span><span class="cursor-blink"></span>
+  </div>
+  <div class="typing-line">// C++ 开发者工具导航站</div>
+  <div class="enter-hint" onclick="enterMain()">按 Enter 或点击此处进入 →</div>
+</div>
+
+<!-- 主导航页 -->
+<div id="main-nav">
+  <div class="nav-header">
+    <h1>神沐 · C++ 开发工具箱</h1>
+    <p>精选 10 款核心工具，覆盖编码、编译、构建、调试全链路</p>
+  </div>
+
+  <div class="tools-grid">
+    <!-- 1. Visual Studio -->
+    <a class="tool-card" href="https://visualstudio.microsoft.com/vs/features/cplusplus/" target="_blank">
+      <span class="tag ide">IDE</span>
+      <div class="tool-icon" style="background:linear-gradient(135deg,#5c2d91,#68217a);color:#fff;">VS</div>
+      <h3>Visual Studio</h3>
+      <p class="desc">微软旗舰级 C++ IDE，集成调试器、IntelliSense、CMake 支持，Windows 平台首选。</p>
+      <div class="tool-links">
+        <span class="tool-link">官网</span>
+        <span class="tool-link docs" onclick="event.stopPropagation();window.open('https://learn.microsoft.com/zh-cn/cpp/','_blank')">MSDN 文档</span>
+      </div>
+    </a>
+
+    <!-- 2. CLion -->
+    <a class="tool-card" href="https://www.jetbrains.com/clion/" target="_blank">
+      <span class="tag ide">IDE</span>
+      <div class="tool-icon" style="background:linear-gradient(135deg,#21d789,#00c853);color:#fff;">CL</div>
+      <h3>CLion</h3>
+      <p class="desc">JetBrains 出品的跨平台 C++ IDE，智能重构、远程开发、CMake 深度集成。</p>
+      <div class="tool-links">
+        <span class="tool-link">官网</span>
+        <span class="tool-link docs" onclick="event.stopPropagation();window.open('https://www.jetbrains.com/help/clion/','_blank')">官方文档</span>
+      </div>
+    </a>
+
+    <!-- 3. GCC / G++ -->
+    <a class="tool-card" href="https://gcc.gnu.org/" target="_blank">
+      <span class="tag compiler">Compiler</span>
+      <div class="tool-icon" style="background:linear-gradient(135deg,#ff6b35,#f7931e);color:#fff;">G++</div>
+      <h3>GCC / G++</h3>
+      <p class="desc">GNU 编译器套装，Linux 世界的事实标准编译器，支持 C++23 最新特性。</p>
+      <div class="tool-links">
+        <span class="tool-link">官网</span>
+        <span class="tool-link docs" onclick="event.stopPropagation();window.open('https://gcc.gnu.org/onlinedocs/gcc-14.2.0/gcc/','_blank')">手册</span>
+      </div>
+    </a>
+
+    <!-- 4. Clang / LLVM -->
+    <a class="tool-card" href="https://clang.llvm.org/" target="_blank">
+      <span class="tag compiler">Compiler</span>
+      <div class="tool-icon" style="background:linear-gradient(135deg,#f5a623,#d0021b);color:#fff;">CC</div>
+      <h3>Clang / LLVM</h3>
+      <p class="desc">模块化编译器基础设施，诊断信息极佳，静态分析工具 clang-tidy、clang-format 必备。</p>
+      <div class="tool-links">
+        <span class="tool-link">官网</span>
+        <span class="tool-link docs" onclick="event.stopPropagation();window.open('https://clang.llvm.org/docs/','_blank')">文档</span>
+      </div>
+    </a>
+
+    <!-- 5. CMake -->
+    <a class="tool-card" href="https://cmake.org/" target="_blank">
+      <span class="tag build">Build</span>
+      <div class="tool-icon" style="background:linear-gradient(135deg,#064f8c,#0e75b9);color:#fff;">CM</div>
+      <h3>CMake</h3>
+      <p class="desc">跨平台构建系统生成器，现代 C++ 项目的标准构建工具，支持预设和包管理。</p>
+      <div class="tool-links">
+        <span class="tool-link">官网</span>
+        <span class="tool-link docs" onclick="event.stopPropagation();window.open('https://cmake.org/cmake/help/latest/','_blank')">参考手册</span>
+      </div>
+    </a>
+
+    <!-- 6. Conan -->
+    <a class="tool-card" href="https://conan.io/" target="_blank">
+      <span class="tag build">Build</span>
+      <div class="tool-icon" style="background:linear-gradient(135deg,#2d9cdb,#56ccf2);color:#fff;">CN</div>
+      <h3>Conan</h3>
+      <p class="desc">C/C++ 包管理器，解决依赖地狱，支持二进制缓存和跨平台分发。</p>
+      <div class="tool-links">
+        <span class="tool-link">官网</span>
+        <span class="tool-link docs" onclick="event.stopPropagation();window.open('https://docs.conan.io/2/','_blank')">2.x 文档</span>
+      </div>
+    </a>
+
+    <!-- 7. GDB -->
+    <a class="tool-card" href="https://www.gnu.org/software/gdb/" target="_blank">
+      <span class="tag debug">Debug</span>
+      <div class="tool-icon" style="background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;">DB</div>
+      <h3>GDB</h3>
+      <p class="desc">GNU 调试器，支持断点、单步、反汇编、内存查看，C++ 调试的瑞士军刀。</p>
+      <div class="tool-links">
+        <span class="tool-link">官网</span>
+        <span class="tool-link docs" onclick="event.stopPropagation();window.open('https://sourceware.org/gdb/current/onlinedocs/gdb.html','_blank')">手册</span>
+      </div>
+    </a>
+
+    <!-- 8. Valgrind -->
+    <a class="tool-card" href="https://valgrind.org/" target="_blank">
+      <span class="tag debug">Debug</span>
+      <div class="tool-icon" style="background:linear-gradient(135deg,#9b59b6,#8e44ad);color:#fff;">VG</div>
+      <h3>Valgrind</h3>
+      <p class="desc">内存调试与性能分析框架，Memcheck 检测内存泄漏，Callgrind 分析热点。</p>
+      <div class="tool-links">
+        <span class="tool-link">官网</span>
+        <span class="tool-link docs" onclick="event.stopPropagation();window.open('https://valgrind.org/docs/manual/manual.html','_blank')">用户手册</span>
+      </div>
+    </a>
+
+    <!-- 9. Boost -->
+    <a class="tool-card" href="https://www.boost.org/" target="_blank">
+      <span class="tag lib">Library</span>
+      <div class="tool-icon" style="background:linear-gradient(135deg,#f39c12,#e67e22);color:#fff;">B+</div>
+      <h3>Boost</h3>
+      <p class="desc">C++ 标准库的扩展，提供智能指针、线程库、正则表达式等高质量组件。</p>
+      <div class="tool-links">
+        <span class="tool-link">官网</span>
+        <span class="tool-link docs" onclick="event.stopPropagation();window.open('https://www.boost.org/doc/libs/','_blank')">库文档</span>
+      </div>
+    </a>
+
+    <!-- 10. cppreference -->
+    <a class="tool-card" href="https://en.cppreference.com/" target="_blank">
+      <span class="tag std">Reference</span>
+      <div class="tool-icon" style="background:linear-gradient(135deg,#34495e,#2c3e50);color:#fff;">C++</div>
+      <h3>cppreference</h3>
+      <p class="desc">最权威的 C++ 标准库在线参考手册，涵盖 C++98 到 C++26 所有特性。</p>
+      <div class="tool-links">
+        <span class="tool-link">英文站</span>
+        <span class="tool-link docs" onclick="event.stopPropagation();window.open('https://zh.cppreference.com/','_blank')">中文站</span>
+      </div>
+    </a>
+  </div>
+
+  <div class="footer">
+    <p>神沐 · 为 C++ 开发者精心整理的导航站</p>
+    <p style="margin-top:8px;">数据来源：各工具官方站点 | 设计灵感：<a href="https://github.com/" target="_blank">GitHub</a> 暗色主题</p>
+  </div>
+</div>
+
+<script>
+  // 生成背景粒子
+  const particlesContainer = document.getElementById('particles');
+  for (let i = 0; i < 30; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.style.left = Math.random() * 100 + '%';
+    p.style.top = Math.random() * 100 + '%';
+    p.style.animationDelay = Math.random() * 8 + 's';
+    p.style.animationDuration = (6 + Math.random() * 6) + 's';
+    particlesContainer.appendChild(p);
+  }
+
+  // 进入主页面
+  function enterMain() {
+    const intro = document.getElementById('intro-screen');
+    const main = document.getElementById('main-nav');
+    intro.classList.add('hidden');
+    setTimeout(() => {
+      main.classList.add('visible');
+    }, 300);
+  }
+
+  // Enter 键监听
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !document.getElementById('intro-screen').classList.contains('hidden')) {
+      enterMain();
+    }
+  });
+
+  // 点击 enter-hint 区域
+  document.querySelector('.enter-hint').addEventListener('click', enterMain);
+</script>
+
+</body>
+  </html>
